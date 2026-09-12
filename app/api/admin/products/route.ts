@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/admin";
+import { logActivity } from "@/lib/activity";
 
 export async function GET(req: Request) {
   const gate = await requireAdmin();
@@ -34,7 +35,19 @@ export async function PATCH(req: Request) {
   const product = await prisma.product.update({
     where: { id: productId },
     data: { approval: approved ? "APPROVED" : "REJECTED", approvalNote: approved ? null : note!.trim() },
-    include: { images: true },
+    include: { store: true },
+  });
+  const admin = (gate as { session: { user?: { id?: string; name?: string } } }).session;
+  await logActivity({
+    action: approved ? "PRODUCT_APPROVED" : "PRODUCT_REJECTED",
+    actorId: admin.user?.id ?? null,
+    actorName: admin.user?.name ?? "Admin",
+    actorRole: "ADMIN",
+    message: approved
+      ? `Admin menyetujui produk "${product.title}" (${product.store?.storeName ?? "-"})`
+      : `Admin menolak produk "${product.title}" (${product.store?.storeName ?? "-"}): ${note!.trim()}`,
+    targetId: productId,
+    metadata: { storeName: product.store?.storeName ?? null, title: product.title, note: note?.trim() ?? null },
   });
   return NextResponse.json({ ok: true, product });
 }

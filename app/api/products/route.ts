@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { productSchema } from "@/lib/validators";
 import { requireApprovedSeller } from "@/lib/seller";
 import { auth } from "@/lib/auth";
+import { logActivity } from "@/lib/activity";
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
@@ -93,5 +94,14 @@ export async function POST(req: NextRequest) {
     },
     include: { images: true },
   });
+  await logActivity({
+    action: "PRODUCT_CREATE",
+    actorId: gate.userId,
+    actorName: gate.user.name,
+    actorRole: "SELLER",
+    message: `${gate.user.name} mengunggah produk "${product.title}" (Rp${product.price.toLocaleString("id-ID")}) — menunggu approval`,
+    targetId: product.id,
+    metadata: { storeName: gate.store.storeName, title: product.title, price: product.price },
+  }).catch(() => null);
   return NextResponse.json(product, { status: 201 });
 }

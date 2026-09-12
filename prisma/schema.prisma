@@ -63,6 +63,36 @@ model User {
   @@map("users")
 }
 
+enum ActivityAction {
+  SELLER_REGISTER
+  SELLER_APPROVED
+  SELLER_REJECTED
+  PRODUCT_CREATE
+  PRODUCT_UPDATE
+  PRODUCT_RESUBMIT
+  PRODUCT_APPROVED
+  PRODUCT_REJECTED
+  ORDER_SHIPPED
+  STORE_UPDATE
+}
+
+model ActivityLog {
+  id        String         @id @default(cuid())
+  actorId   String?
+  actorName String?
+  actorRole Role?
+  action    ActivityAction
+  message   String         @db.Text
+  targetId  String?
+  metadata  String?        @db.Text
+  createdAt DateTime       @default(now())
+
+  @@index([actorId])
+  @@index([action])
+  @@index([createdAt])
+  @@map("activity_logs")
+}
+
 model Account {
   id                String  @id @default(cuid())
   userId            String

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireSeller } from "@/lib/seller";
+import { logActivity } from "@/lib/activity";
 
 export async function PATCH(req: NextRequest) {
   const gate = await requireSeller();
@@ -18,6 +19,15 @@ export async function PATCH(req: NextRequest) {
       description: description?.trim() || null,
       logoUrl: logoUrl?.trim() || null,
     },
+  });
+  await logActivity({
+    action: "STORE_UPDATE",
+    actorId: gate.userId,
+    actorName: gate.user.name,
+    actorRole: "SELLER",
+    message: `${gate.user.name} memperbarui info toko "${store.storeName}"`,
+    targetId: store.id,
+    metadata: { storeName: store.storeName },
   });
   return NextResponse.json(store);
 }

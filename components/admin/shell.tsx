@@ -6,7 +6,7 @@ import { useSession, signOut } from "next-auth/react";
 import { useState } from "react";
 import {
   LayoutDashboard, Store, Package, ClipboardList, Users, Tag, Star, Settings, ChevronDown,
-  Search, Bell, Menu, X, LogOut, Crown, ShoppingBag, Megaphone, UserCircle2,
+  Search, Bell, Menu, X, LogOut, Crown, ShoppingBag, Megaphone, UserCircle2, Activity,
 } from "lucide-react";
 import { useDarkMode } from "@/components/use-dark-mode";
 
@@ -19,7 +19,7 @@ const NAV: NavItem[] = [
   { label: "Store - Client", icon: ShoppingBag, children: [{ label: "Home / Katalog", href: "/" }, { label: "Keranjang", href: "/cart" }, { label: "My Orders", href: "/admin/orders" }] },
   { label: "Produk", icon: Package, children: [{ label: "Inventori", href: "/admin/products" }, { label: "Kategori", href: "/admin/categories" }] },
   { label: "Pesanan", icon: ClipboardList, children: [{ label: "Semua Pesanan", href: "/admin/orders" }] },
-  { label: "Pengguna", icon: Users, children: [{ label: "Daftar Users", href: "/admin/users" }, { label: "Sellers (Approval)", href: "/admin/sellers" }, { label: "Roles & Permissions", href: "/admin/roles" }] },
+  { label: "Pengguna", icon: Users, children: [{ label: "Daftar Users", href: "/admin/users" }, { label: "Sellers (Approval)", href: "/admin/sellers" }, { label: "Aktivitas Seller", href: "/admin/activity" }, { label: "Roles & Permissions", href: "/admin/roles" }] },
   { label: "Ulasan", icon: Star, href: "/admin/reviews" },
   { label: "Kupon & Promo", icon: Tag, href: "/admin/promos" },
   { label: "Campaigns", icon: Megaphone, href: "/admin/campaigns" },

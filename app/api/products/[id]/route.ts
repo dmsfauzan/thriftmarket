@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { productSchema } from "@/lib/validators";
 import { requireSeller } from "@/lib/seller";
+import { logActivity } from "@/lib/activity";
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -34,6 +35,15 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       data: { approval: "PENDING", approvalNote: null },
       include: { images: true },
     });
+    await logActivity({
+      action: "PRODUCT_RESUBMIT",
+      actorId: gate.user.id,
+      actorName: gate.user.name,
+      actorRole: "SELLER",
+      message: `${gate.user.name} mengajukan ulang produk "${updated.title}"`,
+      targetId: id,
+      metadata: { storeName: gate.store.storeName, title: updated.title },
+    });
     return NextResponse.json(updated);
   }
 
@@ -55,6 +65,15 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       defectDescription: parsed.data.defectDescription || null,
     },
     include: { images: true },
+  });
+  await logActivity({
+    action: "PRODUCT_UPDATE",
+    actorId: gate.user.id,
+    actorName: gate.user.name,
+    actorRole: "SELLER",
+    message: `${gate.user.name} memperbarui produk "${updated.title}"`,
+    targetId: id,
+    metadata: { storeName: gate.store.storeName, title: updated.title, price: updated.price },
   });
   return NextResponse.json(updated);
 }
