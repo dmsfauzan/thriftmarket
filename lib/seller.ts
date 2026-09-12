@@ -10,6 +10,14 @@ export async function requireSeller() {
   if (role !== "SELLER") return { error: NextResponse.json({ error: "Hanya SELLER" }, { status: 403 }) } as const;
   const user = await prisma.user.findUnique({ where: { id: userId }, include: { store: true } });
   if (!user?.store) return { error: NextResponse.json({ error: "Store belum dibuat" }, { status: 400 }) } as const;
+  if (user.suspendedUntil && new Date(user.suspendedUntil).getTime() > Date.now()) {
+    return {
+      error: NextResponse.json(
+        { error: `Akun ditangguhkan hingga ${new Date(user.suspendedUntil).toLocaleString("id-ID")}${user.suspendReason ? ` — ${user.suspendReason}` : ""}` },
+        { status: 403 }
+      ),
+    } as const;
+  }
   return { session, userId, user, store: user.store };
 }
 

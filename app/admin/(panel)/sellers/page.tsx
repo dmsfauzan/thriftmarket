@@ -42,7 +42,7 @@ export default function AdminSellers() {
               <div key={s.id} className="rounded-2xl border border-slate-100 p-4">
                 <div className="flex flex-wrap items-center gap-3">
                   <div className="flex-1">
-                    <p className="font-bold">{s.name} <span className="text-xs font-normal text-slate-400">{s.email}</span></p>
+                    <p className="font-bold">{s.name} <span className="text-xs font-normal text-slate-400">{s.email}</span> <a href={`/admin/sellers/${s.id}`} className="ml-1 text-xs font-bold text-slate-900 underline">Detail →</a></p>
                     <p className="text-sm text-slate-600">Toko: <b>{s.store?.storeName}</b> • {s.store?._count?.products ?? 0} produk</p>
                     {s.sellerRejectReason && <p className="text-xs text-red-600">Alasan tolak sebelumnya: {s.sellerRejectReason}</p>}
                   </div>

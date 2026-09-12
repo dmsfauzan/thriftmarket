@@ -47,6 +47,8 @@ model User {
   role               Role           @default(BUYER)
   sellerStatus       ApprovalStatus @default(APPROVED)
   sellerRejectReason String?        @db.Text
+  suspendedUntil     DateTime?
+  suspendReason      String?        @db.Text
   phone              String?
   image              String?        @db.Text
   createdAt          DateTime       @default(now())
@@ -287,6 +289,7 @@ model Review {
   rating    Int
   comment   String   @db.Text
   imageUrl  String?  @db.Text
+  isHidden  Boolean  @default(false)
   createdAt DateTime @default(now())
 
   order   Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
@@ -295,4 +298,23 @@ model Review {
 
   @@index([productId])
   @@map("reviews")
+}
+
+model Promo {
+  id        String   @id @default(cuid())
+  code      String   @unique
+  label     String?
+  discount  Int
+  isActive  Boolean  @default(true)
+  expiresAt DateTime?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  @@map("promos")
+}
+
+model SiteSetting {
+  key       String   @id
+  value     String   @db.Text
+  updatedAt DateTime @updatedAt
+  @@map("site_settings")
 }

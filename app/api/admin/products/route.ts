@@ -24,32 +24,37 @@ export async function GET(req: Request) {
 export async function PATCH(req: Request) {
   const gate = await requireAdmin();
   if ("error" in gate) return gate.error;
-  const { productId, action, note } = (await req.json()) as { productId: string; action: "APPROVE" | "REJECT"; note?: string };
-  if (!productId || !["APPROVE", "REJECT"].includes(action)) {
+  const { productId, productIds, action, note } = (await req.json()) as { productId?: string; productIds?: string[]; action: "APPROVE" | "REJECT"; note?: string };
+  const ids = productIds?.length ? productIds : productId ? [productId] : [];
+  if (!ids.length || !["APPROVE", "REJECT"].includes(action)) {
     return NextResponse.json({ error: "Payload tidak valid" }, { status: 400 });
   }
   if (action === "REJECT" && !note?.trim()) {
     return NextResponse.json({ error: "Catatan penolakan wajib diisi" }, { status: 400 });
   }
   const approved = action === "APPROVE";
-  const product = await prisma.product.update({
-    where: { id: productId },
-    data: { approval: approved ? "APPROVED" : "REJECTED", approvalNote: approved ? null : note!.trim() },
-    include: { store: true },
-  });
   const admin = (gate as { session: { user?: { id?: string; name?: string } } }).session;
-  await logActivity({
-    action: approved ? "PRODUCT_APPROVED" : "PRODUCT_REJECTED",
-    actorId: admin.user?.id ?? null,
-    actorName: admin.user?.name ?? "Admin",
-    actorRole: "ADMIN",
-    message: approved
-      ? `Admin menyetujui produk "${product.title}" (${product.store?.storeName ?? "-"})`
-      : `Admin menolak produk "${product.title}" (${product.store?.storeName ?? "-"}): ${note!.trim()}`,
-    targetId: productId,
-    metadata: { storeName: product.store?.storeName ?? null, title: product.title, note: note?.trim() ?? null },
-  });
-  return NextResponse.json({ ok: true, product });
+  const products = await prisma.$transaction(
+    ids.map((id) => prisma.product.update({
+      where: { id },
+      data: { approval: approved ? "APPROVED" : "REJECTED", approvalNote: approved ? null : note!.trim() },
+      include: { store: true },
+    }))
+  );
+  await Promise.all(products.map((product) =>
+    logActivity({
+      action: approved ? "PRODUCT_APPROVED" : "PRODUCT_REJECTED",
+      actorId: admin.user?.id ?? null,
+      actorName: admin.user?.name ?? "Admin",
+      actorRole: "ADMIN",
+      message: approved
+        ? `Admin menyetujui produk "${product.title}" (${product.store?.storeName ?? "-"})`
+        : `Admin menolak produk "${product.title}" (${product.store?.storeName ?? "-"}): ${note!.trim()}`,
+      targetId: product.id,
+      metadata: { storeName: product.store?.storeName ?? null, title: product.title, note: note?.trim() ?? null },
+    })
+  ));
+  return NextResponse.json({ ok: true, count: products.length, products });
 }
 
 export async function DELETE(req: Request) {

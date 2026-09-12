@@ -18,6 +18,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         if (!parsed.success) return null;
         const user = await prisma.user.findUnique({ where: { email: parsed.data.email } });
         if (!user?.password) return null;
+        if (user.suspendedUntil && user.suspendedUntil.getTime() > Date.now()) return null;
         const ok = await bcrypt.compare(parsed.data.password, user.password);
         if (!ok) return null;
         return { id: user.id, name: user.name, email: user.email, image: user.image, role: user.role } as never;
