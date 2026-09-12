@@ -1,0 +1,268 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  BUYER
+  SELLER
+  ADMIN
+}
+
+enum Condition {
+  LIKE_NEW
+  GOOD
+  FAIR
+}
+
+enum ProductStatus {
+  AVAILABLE
+  BOOKED
+  SOLD
+}
+
+enum OrderStatus {
+  PENDING_PAYMENT
+  PAID
+  SHIPPED
+  COMPLETED
+  CANCELLED
+}
+
+enum ApprovalStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+model User {
+  id                 String         @id @default(cuid())
+  name               String?
+  email              String         @unique
+  password           String?
+  role               Role           @default(BUYER)
+  sellerStatus       ApprovalStatus @default(APPROVED)
+  sellerRejectReason String?        @db.Text
+  phone              String?
+  image              String?        @db.Text
+  createdAt          DateTime       @default(now())
+  updatedAt          DateTime       @updatedAt
+
+  addresses Address[]
+  store     Store?
+  cartItems CartItem[]
+  orders    Order[]    @relation("BuyerOrders")
+  reviews   Review[]
+  accounts  Account[]
+  sessions  Session[]
+
+  @@map("users")
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@map("accounts")
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("sessions")
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+  @@map("verification_tokens")
+}
+
+model Address {
+  id         String  @id @default(cuid())
+  userId     String
+  street     String  @db.Text
+  city       String
+  province   String
+  postalCode String
+  isPrimary  Boolean @default(false)
+  label      String? @default("Rumah")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("addresses")
+}
+
+model Store {
+  id           String         @id @default(cuid())
+  userId       String         @unique
+  storeName    String
+  description  String?        @db.Text
+  logoUrl      String?        @db.Text
+  rating       Float          @default(0)
+  approval     ApprovalStatus @default(APPROVED)
+  rejectReason String?        @db.Text
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+
+  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  products Product[]
+  orders   Order[]
+
+  @@map("stores")
+}
+
+model Category {
+  id       String    @id @default(cuid())
+  name     String    @unique
+  slug     String    @unique
+  imageUrl String?   @db.Text
+  products Product[]
+
+  @@map("categories")
+}
+
+model Product {
+  id               String        @id @default(cuid())
+  storeId          String
+  categoryId       String
+  title            String        @db.VarChar(255)
+  description      String        @db.Text
+  price            Int
+  condition        Condition     @default(GOOD)
+  sizePxL          String?
+  sizeLabel        String?
+  brand            String?
+  gender           String?
+  isUniqueStock    Boolean        @default(true)
+  status           ProductStatus  @default(AVAILABLE)
+  approval         ApprovalStatus @default(APPROVED)
+  approvalNote     String?        @db.Text
+  defectDescription String?       @db.Text
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+
+  store      Store          @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  category   Category       @relation(fields: [categoryId], references: [id])
+  images     ProductImage[]
+  cartItems  CartItem[]
+  orderItems OrderItem[]
+  reviews    Review[]
+
+  @@index([storeId])
+  @@index([categoryId])
+  @@index([status])
+  @@index([condition])
+  @@index([price])
+  @@map("products")
+}
+
+model ProductImage {
+  id        String  @id @default(cuid())
+  productId String
+  url       String  @db.Text
+  isDefect  Boolean @default(false)
+
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@index([productId])
+  @@map("product_images")
+}
+
+model CartItem {
+  id        String   @id @default(cuid())
+  userId    String
+  productId String
+  createdAt DateTime @default(now())
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, productId])
+  @@index([userId])
+  @@map("cart_items")
+}
+
+model Order {
+  id            String      @id @default(cuid())
+  orderNumber   String      @unique
+  buyerId       String
+  storeId       String
+  totalPrice    Int
+  shippingFee   Int         @default(0)
+  status        OrderStatus @default(PENDING_PAYMENT)
+  snapToken     String?     @db.Text
+  waybillNumber String?
+  courier       String?
+  shippingAddress String?   @db.Text
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+  paidAt        DateTime?
+  shippedAt     DateTime?
+  completedAt   DateTime?
+
+  buyer User        @relation("BuyerOrders", fields: [buyerId], references: [id])
+  store Store       @relation(fields: [storeId], references: [id])
+  items OrderItem[]
+  review Review?
+
+  @@index([buyerId])
+  @@index([storeId])
+  @@index([status])
+  @@map("orders")
+}
+
+model OrderItem {
+  id        String @id @default(cuid())
+  orderId   String
+  productId String
+  price     Int
+
+  order   Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [productId], references: [id])
+
+  @@index([orderId])
+  @@map("order_items")
+}
+
+model Review {
+  id        String   @id @default(cuid())
+  orderId   String   @unique
+  userId    String
+  productId String
+  rating    Int
+  comment   String   @db.Text
+  imageUrl  String?  @db.Text
+  createdAt DateTime @default(now())
+
+  order   Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@index([productId])
+  @@map("reviews")
+}
