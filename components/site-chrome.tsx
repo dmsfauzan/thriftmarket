@@ -2,6 +2,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Navbar } from "@/components/navbar";
+import { AiChat } from "@/components/ai-chat";
 
 const FOOT = [
   ["product", ["Features", "Pricing", "API", "Documentation"]],
@@ -43,6 +44,7 @@ export function SiteChrome({ children }: { children: React.ReactNode }) {
           </div>
         </div>
       </footer>
+      <AiChat />
     </div>
   );
 }

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireApprovedSeller } from "@/lib/seller";
 import { logActivity } from "@/lib/activity";
+import { notify } from "@/lib/notify";
 
 export async function GET() {
   const gate = await requireApprovedSeller();
@@ -24,6 +25,7 @@ export async function PATCH(req: NextRequest) {
   if (!order || order.storeId !== gate.store.id) return NextResponse.json({ error: "Not found" }, { status: 404 });
   if (order.status !== "PAID") return NextResponse.json({ error: "Hanya pesanan PAID yang bisa dikirim" }, { status: 400 });
   await prisma.order.update({ where: { id: orderId }, data: { waybillNumber: waybillNumber.trim(), status: "SHIPPED", shippedAt: new Date() } });
+  await notify({ userId: order.buyerId, type: "ORDER", title: `Pesanan dikirim: ${order.orderNumber}`, body: `Resi: ${waybillNumber.trim()} · Konfirmasi terima dalam 24 jam.`, link: `/orders/${order.orderNumber}` });
   await logActivity({
     action: "ORDER_SHIPPED",
     actorId: gate.userId,

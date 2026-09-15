@@ -20,17 +20,26 @@ export async function POST(req: NextRequest) {
   const province = String(body.province ?? "").trim();
   const postalCode = String(body.postalCode ?? "").trim();
   const label = String(body.label ?? "Rumah").trim() || "Rumah";
+  const latitude = body.latitude === null || body.latitude === undefined || body.latitude === "" ? null : Number(body.latitude);
+  const longitude = body.longitude === null || body.longitude === undefined || body.longitude === "" ? null : Number(body.longitude);
+  const provinceId = String(body.provinceId ?? "").trim() || null;
+  const cityId = String(body.cityId ?? "").trim() || null;
+  const subdistrictId = String(body.subdistrictId ?? "").trim() || null;
+  const phone = String(body.phone ?? "").trim() || null;
 
   if (street.length < 5) return NextResponse.json({ error: "Alamat minimal 5 karakter" }, { status: 400 });
   if (!city || !province) return NextResponse.json({ error: "Kota & provinsi wajib diisi" }, { status: 400 });
   if (!/^\d{4,6}$/.test(postalCode)) return NextResponse.json({ error: "Kode pos harus 4-6 digit angka" }, { status: 400 });
+  if (latitude !== null && (!Number.isFinite(latitude) || latitude < -90 || latitude > 90)) return NextResponse.json({ error: "Latitude tidak valid" }, { status: 400 });
+  if (longitude !== null && (!Number.isFinite(longitude) || longitude < -180 || longitude > 180)) return NextResponse.json({ error: "Longitude tidak valid" }, { status: 400 });
+  if (phone && !/^\+?[0-9]{9,15}$/.test(phone.replace(/[\s-]/g, ""))) return NextResponse.json({ error: "No. HP tidak valid" }, { status: 400 });
 
   const count = await prisma.address.count({ where: { userId } });
   const makePrimary = !!body.isPrimary || count === 0;
   if (makePrimary) await prisma.address.updateMany({ where: { userId }, data: { isPrimary: false } });
 
   const address = await prisma.address.create({
-    data: { userId, street, city, province, postalCode, isPrimary: makePrimary, label },
+    data: { userId, street, city, province, postalCode, latitude, longitude, provinceId, cityId, subdistrictId, phone, isPrimary: makePrimary, label },
   });
   return NextResponse.json(address);
 }

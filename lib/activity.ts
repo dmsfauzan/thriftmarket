@@ -13,7 +13,9 @@ export async function logActivity(input: {
     | "PRODUCT_APPROVED"
     | "PRODUCT_REJECTED"
     | "ORDER_SHIPPED"
-    | "STORE_UPDATE";
+    | "STORE_UPDATE"
+    | "DISPUTE_OPENED"
+    | "DISPUTE_RESOLVED";
   actorId?: string | null;
   actorName?: string | null;
   actorRole?: Role | null;

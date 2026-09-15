@@ -6,16 +6,21 @@ import { useSession, signOut } from "next-auth/react";
 import { useState } from "react";
 import {
   LayoutDashboard, Store, Package, ClipboardList, Star,
-  ChevronDown, Search, Bell, Menu, X, LogOut, ShoppingBag, Settings2,
+  ChevronDown, Search, Menu, X, LogOut, ShoppingBag, Settings2, BarChart3, Scale, MessageCircle, Wallet,
 } from "lucide-react";
 import { useDarkMode } from "@/components/use-dark-mode";
+import { NotificationBell } from "@/components/extras";
 
 type NavItem = { label: string; href?: string; icon: any; badge?: string; children?: { label: string; href: string }[] };
 
 const SELLER_NAV: NavItem[] = [
   { label: "Overview", href: "/seller", icon: LayoutDashboard },
-  { label: "Produk", icon: Package, children: [{ label: "Inventori", href: "/seller/products" }, { label: "Tambah Produk", href: "/seller/products/create" }] },
+  { label: "Analitik", href: "/seller/analytics", icon: BarChart3 },
+  { label: "Dompet", href: "/seller/wallet", icon: Wallet },
+  { label: "Produk", icon: Package, children: [{ label: "Inventori", href: "/seller/products" }, { label: "Tambah Produk", href: "/seller/products/create" }, { label: "Upload Massal (CSV)", href: "/seller/products/bulk" }] },
   { label: "Pesanan", href: "/seller/orders", icon: ClipboardList },
+  { label: "Komplain", href: "/seller/disputes", icon: Scale },
+  { label: "Chat", href: "/chat", icon: MessageCircle },
   { label: "Toko Saya", href: "/seller/store", icon: Store },
   { label: "Ulasan", href: "/seller/reviews", icon: Star },
 ];
@@ -81,7 +86,6 @@ function Sidebar() {
 function Topbar() {
   const { data: session } = useSession();
   const [q, setQ] = useState("");
-  const [notifOpen, setNotifOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const { dark, toggle } = useDarkMode();
   return (
@@ -95,20 +99,7 @@ function Topbar() {
           <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Cari produk / pesanan..." className="w-64 rounded-full border border-slate-200 bg-slate-50 py-2 pl-9 pr-3 text-sm outline-none focus:bg-white" />
         </div>
         <button onClick={toggle} className={`rounded-full border px-3 py-2 text-xs font-medium ${dark ? "border-amber-300 bg-amber-300 text-amber-950" : "border-slate-900 bg-slate-900 text-white"}`}>{dark ? "☀ Light" : "☾ Dark"}</button>
-        <div className="relative">
-          <button onClick={() => setNotifOpen((v) => !v)} className="relative rounded-full border border-slate-200 p-2.5 text-slate-600 hover:bg-slate-50"><Bell size={18} /><span className="absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full bg-emerald-500 ring-2 ring-white" /></button>
-          {notifOpen && (
-            <div className="absolute right-0 mt-2 w-80 rounded-2xl border border-slate-200 bg-white p-4 shadow-xl">
-              <p className="text-sm font-bold">Notifikasi Seller</p>
-              <p className="mt-2 text-xs text-slate-500">Pesanan PAID menunggu resi • Produk PENDING menunggu approve.</p>
-              <div className="mt-3 space-y-2 text-sm">
-                <div className="rounded-xl bg-slate-50 p-3"><b>Order #PAID</b> — input resi untuk kirim</div>
-                <div className="rounded-xl bg-amber-50 p-3"><b>Produk PENDING</b> — menunggu review admin</div>
-                <div className="rounded-xl bg-red-50 p-3"><b>Produk REJECTED</b> — bisa Ajukan Ulang</div>
-              </div>
-            </div>
-          )}
-        </div>
+        <NotificationBell />
         <div className="relative">
           <button onClick={() => setProfileOpen((v) => !v)} className="flex items-center gap-2 rounded-full border border-slate-200 px-2 py-1.5">
             <img src={session?.user?.image ?? "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=64&q=80"} alt="avatar" className="h-7 w-7 rounded-full object-cover" />
@@ -149,7 +140,7 @@ export function SellerShell({ children }: { children: React.ReactNode }) {
         <Topbar />
         <div className="flex-1 p-4 sm:p-6">
           {children}
-          <p className="mt-10 text-center text-xs text-slate-400">Seller Center — fitur terbatas (Produk & Pesanan). Admin approval tetap berlaku.</p>
+          <p className="mt-10 text-center text-xs text-slate-400">Seller Center — kelola produk, pesanan, chat & komplain. Admin approval tetap berlaku.</p>
         </div>
       </div>
     </div>

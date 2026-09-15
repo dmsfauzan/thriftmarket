@@ -39,6 +39,23 @@ enum ApprovalStatus {
   REJECTED
 }
 
+enum NotificationType {
+  ORDER
+  PRODUCT
+  PROMO
+  DISPUTE
+  CHAT
+  SYSTEM
+}
+
+enum DisputeStatus {
+  OPEN
+  SELLER_RESPONDED
+  RESOLVED_REFUND
+  RESOLVED_REJECTED
+  CANCELLED
+}
+
 model User {
   id                 String         @id @default(cuid())
   name               String?
@@ -54,13 +71,20 @@ model User {
   createdAt          DateTime       @default(now())
   updatedAt          DateTime       @updatedAt
 
-  addresses Address[]
-  store     Store?
-  cartItems CartItem[]
-  orders    Order[]    @relation("BuyerOrders")
-  reviews   Review[]
-  accounts  Account[]
-  sessions  Session[]
+  addresses     Address[]
+  store         Store?
+  cartItems     CartItem[]
+  wishlistItems WishlistItem[]
+  notifications Notification[]
+  orders        Order[]        @relation("BuyerOrders")
+  reviews       Review[]
+  accounts      Account[]
+  sessions      Session[]
+  conversations Conversation[] @relation("BuyerConversations")
+  messages      Message[]
+  disputes      Dispute[]
+  wallet        Wallet?
+  follows       Follow[]
 
   @@map("users")
 }
@@ -76,6 +100,8 @@ enum ActivityAction {
   PRODUCT_REJECTED
   ORDER_SHIPPED
   STORE_UPDATE
+  DISPUTE_OPENED
+  DISPUTE_RESOLVED
 }
 
 model ActivityLog {
@@ -140,6 +166,12 @@ model Address {
   city       String
   province   String
   postalCode String
+  latitude   Float?
+  longitude  Float?
+  provinceId String?
+  cityId     String?
+  subdistrictId String?
+  phone      String?
   isPrimary  Boolean @default(false)
   label      String? @default("Rumah")
 
@@ -161,9 +193,11 @@ model Store {
   createdAt    DateTime       @default(now())
   updatedAt    DateTime       @updatedAt
 
-  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  products Product[]
-  orders   Order[]
+  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  products      Product[]
+  orders        Order[]
+  conversations Conversation[]
+  followers     Follow[]
 
   @@map("stores")
 }
@@ -179,37 +213,42 @@ model Category {
 }
 
 model Product {
-  id               String        @id @default(cuid())
-  storeId          String
-  categoryId       String
-  title            String        @db.VarChar(255)
-  description      String        @db.Text
-  price            Int
-  condition        Condition     @default(GOOD)
-  sizePxL          String?
-  sizeLabel        String?
-  brand            String?
-  gender           String?
-  isUniqueStock    Boolean        @default(true)
-  status           ProductStatus  @default(AVAILABLE)
-  approval         ApprovalStatus @default(APPROVED)
-  approvalNote     String?        @db.Text
-  defectDescription String?       @db.Text
-  createdAt        DateTime       @default(now())
-  updatedAt        DateTime       @updatedAt
+  id                String         @id @default(cuid())
+  storeId           String
+  categoryId        String
+  title             String         @db.VarChar(255)
+  description       String         @db.Text
+  price             Int
+  condition         Condition      @default(GOOD)
+  sizePxL           String?
+  sizeLabel         String?
+  brand             String?
+  gender            String?
+  isUniqueStock     Boolean        @default(true)
+  stockQty          Int            @default(1)
+  sku               String?        @db.VarChar(50)
+  weight            Int?           @db.Int
+  status            ProductStatus  @default(AVAILABLE)
+  approval          ApprovalStatus @default(APPROVED)
+  approvalNote      String?        @db.Text
+  defectDescription String?        @db.Text
+  createdAt         DateTime       @default(now())
+  updatedAt         DateTime       @updatedAt
 
-  store      Store          @relation(fields: [storeId], references: [id], onDelete: Cascade)
-  category   Category       @relation(fields: [categoryId], references: [id])
-  images     ProductImage[]
-  cartItems  CartItem[]
-  orderItems OrderItem[]
-  reviews    Review[]
+  store         Store          @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  category      Category       @relation(fields: [categoryId], references: [id])
+  images        ProductImage[]
+  cartItems     CartItem[]
+  wishlistItems WishlistItem[]
+  orderItems    OrderItem[]
+  reviews       Review[]
 
   @@index([storeId])
   @@index([categoryId])
   @@index([status])
   @@index([condition])
   @@index([price])
+  @@index([stockQty])
   @@map("products")
 }
 
@@ -239,33 +278,76 @@ model CartItem {
   @@map("cart_items")
 }
 
-model Order {
-  id            String      @id @default(cuid())
-  orderNumber   String      @unique
-  buyerId       String
-  storeId       String
-  totalPrice    Int
-  shippingFee   Int         @default(0)
-  status        OrderStatus @default(PENDING_PAYMENT)
-  snapToken     String?     @db.Text
-  waybillNumber String?
-  courier       String?
-  shippingAddress String?   @db.Text
-  createdAt     DateTime    @default(now())
-  updatedAt     DateTime    @updatedAt
-  paidAt        DateTime?
-  shippedAt     DateTime?
-  completedAt   DateTime?
+model WishlistItem {
+  id        String   @id @default(cuid())
+  userId    String
+  productId String
+  createdAt DateTime @default(now())
 
-  buyer User        @relation("BuyerOrders", fields: [buyerId], references: [id])
-  store Store       @relation(fields: [storeId], references: [id])
-  items OrderItem[]
-  review Review?
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, productId])
+  @@index([userId])
+  @@map("wishlist_items")
+}
+
+model Order {
+  id              String      @id @default(cuid())
+  orderNumber     String      @unique
+  buyerId         String
+  storeId         String
+  totalPrice      Int
+  shippingFee     Int         @default(0)
+  discountAmount  Int         @default(0)
+  promoCode       String?
+  paymentGroup    String?
+  status          OrderStatus @default(PENDING_PAYMENT)
+  snapToken       String?     @db.Text
+  waybillNumber   String?
+  courier         String?
+  courierService  String?
+  trackingUrl     String?     @db.Text
+  lalamoveQuotationId String?
+  lalamoveOrderId     String?
+  lalamoveStatus      String?
+  shipmentPayload     String? @db.Text
+  shippingMethod  String?
+  shippingAddress String?     @db.Text
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+  paidAt          DateTime?
+  shippedAt       DateTime?
+  completedAt     DateTime?
+
+  buyer        User          @relation("BuyerOrders", fields: [buyerId], references: [id])
+  store        Store         @relation(fields: [storeId], references: [id])
+  items        OrderItem[]
+  review       Review?
+  conversation Conversation?
+  dispute      Dispute?
+  ledgers      Ledger[]
+  shipmentEvents ShipmentEvent[]
 
   @@index([buyerId])
   @@index([storeId])
   @@index([status])
+  @@index([paymentGroup])
   @@map("orders")
+}
+
+model ShipmentEvent {
+  id        String   @id @default(cuid())
+  orderId   String
+  status    String
+  message   String?  @db.Text
+  raw       String?  @db.Text
+  createdAt DateTime @default(now())
+
+  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@index([orderId])
+  @@map("shipment_events")
 }
 
 model OrderItem {
@@ -301,14 +383,17 @@ model Review {
 }
 
 model Promo {
-  id        String   @id @default(cuid())
-  code      String   @unique
-  label     String?
-  discount  Int
-  isActive  Boolean  @default(true)
-  expiresAt DateTime?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id         String    @id @default(cuid())
+  code       String    @unique
+  label      String?
+  discount   Int
+  usageCount Int       @default(0)
+  maxUses    Int?
+  isActive   Boolean   @default(true)
+  expiresAt  DateTime?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
   @@map("promos")
 }
 
@@ -316,5 +401,134 @@ model SiteSetting {
   key       String   @id
   value     String   @db.Text
   updatedAt DateTime @updatedAt
+
   @@map("site_settings")
 }
+
+model Notification {
+  id        String           @id @default(cuid())
+  userId    String
+  type      NotificationType
+  title     String
+  body      String?          @db.Text
+  link      String?
+  isRead    Boolean          @default(false)
+  createdAt DateTime         @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, isRead])
+  @@map("notifications")
+}
+
+model Conversation {
+  id        String   @id @default(cuid())
+  buyerId   String
+  storeId   String
+  orderId   String?  @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  buyer    User      @relation("BuyerConversations", fields: [buyerId], references: [id], onDelete: Cascade)
+  store    Store     @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  order    Order?    @relation(fields: [orderId], references: [id])
+  messages Message[]
+
+  @@unique([buyerId, storeId])
+  @@map("conversations")
+}
+
+model Message {
+  id             String   @id @default(cuid())
+  conversationId String
+  senderId       String
+  body           String   @db.Text
+  isRead         Boolean  @default(false)
+  createdAt      DateTime @default(now())
+
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  sender       User         @relation(fields: [senderId], references: [id], onDelete: Cascade)
+
+  @@index([conversationId])
+  @@map("messages")
+}
+
+model Dispute {
+  id          String        @id @default(cuid())
+  orderId     String        @unique
+  buyerId     String
+  reason      String        @db.Text
+  evidenceUrl String?       @db.Text
+  status      DisputeStatus @default(OPEN)
+  resolution  String?       @db.Text
+  refundAmount Int?
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  buyer User  @relation(fields: [buyerId], references: [id], onDelete: Cascade)
+
+  @@index([status])
+  @@map("disputes")
+}
+
+model Wallet {
+  id         String   @id @default(cuid())
+  userId     String   @unique
+  balance    Int      @default(0)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  ledgers     Ledger[]
+  withdrawals Withdrawal[]
+
+  @@map("wallets")
+}
+
+model Ledger {
+  id          String   @id @default(cuid())
+  walletId    String
+  orderId     String?
+  amount      Int
+  type        String   // "credit" / "debit" / "refund" / "fee" / "payout"
+  description String?
+  createdAt   DateTime @default(now())
+
+  wallet      Wallet   @relation(fields: [walletId], references: [id], onDelete: Cascade)
+  order       Order?   @relation(fields: [orderId], references: [id])
+
+  @@index([walletId])
+  @@index([orderId])
+  @@map("ledgers")
+}
+
+model Withdrawal {
+  id         String   @id @default(cuid())
+  walletId   String
+  amount     Int
+  status     String   @default("PENDING") // PENDING / APPROVED / REJECTED / COMPLETED
+  reason     String?
+  adminNote  String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  wallet     Wallet   @relation(fields: [walletId], references: [id], onDelete: Cascade)
+
+  @@index([walletId])
+  @@map("withdrawals")
+}
+
+model Follow {
+  id         String   @id @default(cuid())
+  buyerId    String
+  storeId    String
+  createdAt  DateTime @default(now())
+
+  buyer      User     @relation(fields: [buyerId], references: [id], onDelete: Cascade)
+  store      Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+
+  @@unique([buyerId, storeId])
+  @@map("follows")
+}
+

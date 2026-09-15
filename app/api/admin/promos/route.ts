@@ -11,7 +11,7 @@ export async function GET() {
 export async function POST(req: Request) {
   const gate = await requireAdmin();
   if ("error" in gate) return gate.error;
-  const { code, label, discount, expiresAt } = await req.json();
+  const { code, label, discount, expiresAt, maxUses } = await req.json();
   if (!code?.trim() || code.trim().length < 3) return NextResponse.json({ error: "Kode minimal 3 karakter" }, { status: 400 });
   if (!Number.isInteger(discount) || discount <= 0 || discount > 90) return NextResponse.json({ error: "Diskon harus 1-90%" }, { status: 400 });
   try {
@@ -20,6 +20,7 @@ export async function POST(req: Request) {
         code: code.trim().toUpperCase(),
         label: label?.trim() || null,
         discount,
+        maxUses: maxUses != null && Number.isFinite(Number(maxUses)) ? Number(maxUses) : null,
         expiresAt: expiresAt ? new Date(expiresAt) : null,
       },
     });

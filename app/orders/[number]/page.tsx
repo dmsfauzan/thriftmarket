@@ -2,6 +2,7 @@
 import { use } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { formatIDR } from "@/lib/utils";
+import { DisputeCta } from "@/components/extras";
 
 export default function OrderDetail({ params }: { params: Promise<{ number: string }> }) {
   const { number } = use(params);
@@ -12,15 +13,16 @@ export default function OrderDetail({ params }: { params: Promise<{ number: stri
     location.reload();
   }
   return (
-    <div className="mx-auto max-w-2xl px-4 py-8 dark:bg-slate-950">
+    <div className="mx-auto max-w-2xl space-y-4 px-4 py-8 dark:bg-slate-950">
       <h1 className="text-xl font-bold dark:text-white">{order.orderNumber}</h1>
       <p className="mt-1 text-sm dark:text-slate-300">Status: <b>{order.status}</b> • Kurir {order.courier} {order.waybillNumber ? `• Resi ${order.waybillNumber}` : ""}</p>
       <div className="mt-4 space-y-2">
         {order.items.map((i: any) => <div key={i.id} className="rounded-xl border border-sand-line bg-white p-3 text-sm dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200">{i.product.title} — {formatIDR(i.price)}</div>)}
       </div>
-      <p className="mt-4 font-bold dark:text-white">Total {formatIDR(order.totalPrice)}</p>
+      <p className="mt-4 font-bold dark:text-white">Total {formatIDR(order.totalPrice)}{order.discountAmount ? ` (diskon ${formatIDR(order.discountAmount)})` : ""}</p>
       {order.status === "SHIPPED" && <button onClick={confirm} className="mt-4 w-full rounded-xl bg-forest py-3 font-semibold text-sand dark:bg-emerald-600 dark:text-white">Konfirmasi Terima Barang</button>}
-      <p className="mt-3 text-xs text-forest/60 dark:text-slate-400">Otomatis selesai 1x24 jam setelah SHIPPED bila tidak ada konfirmasi.</p>
+      {(order.status === "PAID" || order.status === "SHIPPED") && <DisputeCta orderId={order.id} orderNumber={order.orderNumber} />}
+      <p className="mt-3 text-xs text-forest/60 dark:text-slate-400">Otomatis selesai 1x24 jam setelah SHIPPED bila tidak ada konfirmasi. Komplain hanya sebelum COMPLETED.</p>
     </div>
   );
 }

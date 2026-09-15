@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import crypto from "crypto";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
+import { notify } from "@/lib/notify";
 
 export async function GET(req: NextRequest) {
   const session = await auth();
@@ -54,23 +55,33 @@ export async function POST(req: NextRequest) {
   const mapped = statusMap[transaction_status];
   if (!mapped) return NextResponse.json({ ok: true });
 
-  const order = await prisma.order.findUnique({ where: { orderNumber: order_id }, include: { items: true } });
-  if (!order) return NextResponse.json({ error: "Not found" }, { status: 404 });
+  const orders = await prisma.order.findMany({ where: { OR: [{ orderNumber: order_id }, { paymentGroup: order_id }] }, include: { items: true, buyer: true, store: true } });
+  if (!orders.length) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
-  const productIds = order.items.map((i) => i.productId);
+  for (const order of orders) {
+    const productIds = order.items.map((i) => i.productId);
+    await prisma.$transaction(async (tx) => {
+      if (mapped === "PAID") {
+        if (order.status !== "PAID") {
+          await tx.order.update({ where: { id: order.id }, data: { status: "PAID", paidAt: new Date() } });
+          await tx.product.updateMany({ where: { id: { in: productIds } }, data: { status: "SOLD" } });
+          await tx.cartItem.deleteMany({ where: { productId: { in: productIds } } });
+        }
+      } else if (mapped === "CANCELLED") {
+        await tx.order.update({ where: { id: order.id }, data: { status: "CANCELLED" } });
+        await tx.product.updateMany({ where: { id: { in: productIds }, status: "BOOKED" }, data: { status: "AVAILABLE" } });
+      } else {
+        await tx.order.update({ where: { id: order.id }, data: { status: "PENDING_PAYMENT" } });
+      }
+    });
 
-  await prisma.$transaction(async (tx) => {
     if (mapped === "PAID") {
-      await tx.order.update({ where: { orderNumber: order_id }, data: { status: "PAID", paidAt: new Date() } });
-      await tx.product.updateMany({ where: { id: { in: productIds } }, data: { status: "SOLD" } });
-      await tx.cartItem.deleteMany({ where: { productId: { in: productIds } } });
+      await notify({ userId: order.buyerId, type: "ORDER", title: "Pembayaran diterima", body: `${order.orderNumber} PAID. Toko sedang menyiapkan paketmu.`, link: `/orders/${order.orderNumber}` });
+      await notify({ userId: order.store.userId, type: "ORDER", title: "Segera kirim paket", body: `${order.orderNumber} sudah dibayar. Input resi sekarang.`, link: "/seller/orders" });
     } else if (mapped === "CANCELLED") {
-      await tx.order.update({ where: { orderNumber: order_id }, data: { status: "CANCELLED" } });
-      await tx.product.updateMany({ where: { id: { in: productIds }, status: "BOOKED" }, data: { status: "AVAILABLE" } });
-    } else {
-      await tx.order.update({ where: { orderNumber: order_id }, data: { status: "PENDING_PAYMENT" } });
+      await notify({ userId: order.buyerId, type: "ORDER", title: "Pembayaran kedaluwarsa", body: `${order.orderNumber} dibatalkan, stok dikembalikan.`, link: `/orders/${order.orderNumber}` });
     }
-  });
+  }
 
   return NextResponse.json({ ok: true });
 }

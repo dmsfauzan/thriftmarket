@@ -1,8 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
+import { rateLimit } from "@/lib/rate-limit";
 
 export async function POST(req: NextRequest) {
+  const rl = rateLimit(`cart:${req.headers.get("x-forwarded-for") ?? "anon"}`, 40);
+  if (!rl.ok) return NextResponse.json({ error: "Terlalu banyak permintaan" }, { status: 429 });
   const session = await auth();
   if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const userId = (session.user as { id: string }).id;

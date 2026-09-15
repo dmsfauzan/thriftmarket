@@ -1,10 +1,11 @@
 "use client";
 import Link from "next/link";
 import { useSession, signOut } from "next-auth/react";
-import { ShoppingBag, Store, Menu, X, Sun, Moon, ChevronDown, User, Package, LogOut, MapPin } from "lucide-react";
+import { ShoppingBag, Store, Menu, X, Sun, Moon, ChevronDown, User, Package, LogOut, MapPin, Heart, MessageCircle } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { useState, useEffect, useRef } from "react";
 import { useDarkMode } from "@/components/use-dark-mode";
+import { NotificationBell } from "@/components/extras";
 
 const LINKS = [
   { href: "/", label: "Home" },
@@ -63,10 +64,14 @@ export function Navbar() {
           >
             {dark ? <Sun size={17} /> : <Moon size={17} />}
           </button>
+          <Link href="/wishlist" aria-label="wishlist" className="hidden rounded-full border border-slate-200 p-2.5 text-slate-700 hover:bg-slate-50 sm:block dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800">
+            <Heart size={17} />
+          </Link>
           <Link href="/cart" aria-label="cart" className="relative rounded-full border border-slate-200 p-2.5 text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800">
             <ShoppingBag size={17} />
             {count > 0 && <span className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-emerald-600 px-1 text-[11px] font-bold text-white">{count}</span>}
           </Link>
+          {session && <NotificationBell />}
           {session ? (
             <div className="relative" ref={profileRef}>
               <button
@@ -98,6 +103,8 @@ export function Navbar() {
                   <div className="mt-1 border-t border-slate-100 pt-1 dark:border-slate-800">
                     <Link href="/cart" onClick={() => setProfileOpen(false)} className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-slate-600 hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-slate-800"><ShoppingBag size={15} /> Keranjang Saya</Link>
                     <Link href="/orders" onClick={() => setProfileOpen(false)} className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-slate-600 hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-slate-800"><Package size={15} /> Pesanan Saya</Link>
+                    <Link href="/wishlist" onClick={() => setProfileOpen(false)} className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-slate-600 hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-slate-800"><Heart size={15} /> Wishlist</Link>
+                    <Link href="/chat" onClick={() => setProfileOpen(false)} className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-slate-600 hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-slate-800"><MessageCircle size={15} /> Chat</Link>
                     <Link href="/addresses" onClick={() => setProfileOpen(false)} className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-slate-600 hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-slate-800"><MapPin size={15} /> Alamat Pengiriman</Link>
                     {role !== "BUYER" && (
                       <Link href="/seller" onClick={() => setProfileOpen(false)} className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-slate-600 hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-slate-800"><Store size={15} /> Dashboard Seller</Link>

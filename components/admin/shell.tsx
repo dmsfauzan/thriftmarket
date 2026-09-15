@@ -6,9 +6,10 @@ import { useSession, signOut } from "next-auth/react";
 import { useState } from "react";
 import {
   LayoutDashboard, Store, Package, ClipboardList, Users, Tag, Star, Settings, ChevronDown,
-  Search, Bell, Menu, X, LogOut, Crown, ShoppingBag, Megaphone, UserCircle2, Activity,
+  Search, Menu, X, LogOut, Crown, ShoppingBag, Megaphone, UserCircle2, Activity, Wallet,
 } from "lucide-react";
 import { useDarkMode } from "@/components/use-dark-mode";
+import { NotificationBell } from "@/components/extras";
 
 type NavItem = { label: string; href?: string; icon: any; badge?: string; children?: { label: string; href: string }[] };
 
@@ -18,7 +19,8 @@ const NAV: NavItem[] = [
   { label: "My Account", icon: Store, badge: "ThriftMarket", children: [{ label: "Settings", href: "/admin/settings" }, { label: "Security", href: "/admin/security" }] },
   { label: "Store - Client", icon: ShoppingBag, children: [{ label: "Home / Katalog", href: "/" }, { label: "Keranjang", href: "/cart" }, { label: "My Orders", href: "/admin/orders" }] },
   { label: "Produk", icon: Package, children: [{ label: "Inventori", href: "/admin/products" }, { label: "Kategori", href: "/admin/categories" }] },
-  { label: "Pesanan", icon: ClipboardList, children: [{ label: "Semua Pesanan", href: "/admin/orders" }] },
+  { label: "Pesanan", icon: ClipboardList, children: [{ label: "Semua Pesanan", href: "/admin/orders" }, { label: "Sengketa / Dispute", href: "/admin/disputes" }, { label: "Payout Seller", href: "/admin/payouts" }] },
+  { label: "Payout", icon: Wallet, href: "/admin/payouts" },
   { label: "Pengguna", icon: Users, children: [{ label: "Daftar Users", href: "/admin/users" }, { label: "Sellers (Approval)", href: "/admin/sellers" }, { label: "Aktivitas Seller", href: "/admin/activity" }, { label: "Roles & Permissions", href: "/admin/roles" }] },
   { label: "Ulasan", icon: Star, href: "/admin/reviews" },
   { label: "Kupon & Promo", icon: Tag, href: "/admin/promos" },
@@ -67,7 +69,6 @@ function Sidebar() {
 function Topbar() {
   const { data: session } = useSession();
   const [q, setQ] = useState("");
-  const [notifOpen, setNotifOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const { dark, toggle } = useDarkMode();
   return (
@@ -81,20 +82,7 @@ function Topbar() {
           <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search (cmd + /)" className="w-64 rounded-full border border-slate-200 bg-slate-50 py-2 pl-9 pr-3 text-sm outline-none focus:bg-white" />
         </div>
         <button onClick={toggle} className={`rounded-full border px-3 py-2 text-xs font-medium ${dark ? "border-amber-300 bg-amber-300 text-amber-950" : "border-slate-900 bg-slate-900 text-white"}`}>{dark ? "☀ Light" : "☾ Dark"}</button>
-        <div className="relative">
-          <button onClick={() => setNotifOpen((v) => !v)} className="relative rounded-full border border-slate-200 p-2.5 text-slate-600 hover:bg-slate-50"><Bell size={18} /><span className="absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full bg-red-500 ring-2 ring-white" /></button>
-          {notifOpen && (
-            <div className="absolute right-0 mt-2 w-80 rounded-2xl border border-slate-200 bg-white p-4 shadow-xl">
-              <p className="text-sm font-bold">Notifications</p>
-              <p className="mt-2 text-xs text-slate-500">3 pesanan baru menunggu konfirmasi resi.</p>
-              <div className="mt-3 space-y-2 text-sm">
-                <div className="rounded-xl bg-slate-50 p-3">Joe Lincoln mentioned you — <b>Latest Trends</b> <span className="text-xs text-slate-400">18m ago</span></div>
-                <div className="rounded-xl bg-slate-50 p-3">Leslie Alexander added tags to <b>Web Redesign 2024</b></div>
-                <div className="rounded-xl bg-slate-50 p-3">Guy Hawkins requested access to <b>AirSpace</b></div>
-              </div>
-            </div>
-          )}
-        </div>
+        <NotificationBell />
         <div className="relative">
           <button onClick={() => setProfileOpen((v) => !v)} className="flex items-center gap-2 rounded-full border border-slate-200 px-2 py-1.5">
             <img src={session?.user?.image ?? "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=64&q=80"} alt="avatar" className="h-7 w-7 rounded-full object-cover" />

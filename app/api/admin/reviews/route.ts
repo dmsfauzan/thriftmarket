@@ -44,8 +44,8 @@ export async function DELETE(req: Request) {
   const productId = review.productId;
   const product = await prisma.product.findUnique({ where: { id: productId } });
   if (product) {
-    const all = await prisma.review.aggregate({ where: { product: { storeId: product.storeId }, isHidden: false }, _avg: { rating: true } });
-    await prisma.store.update({ where: { id: product.storeId }, data: { rating: all._avg.rating ?? 0 } });
+    const { recalcStoreRating } = await import("@/lib/store-rating");
+    await recalcStoreRating(product.storeId);
   }
   return NextResponse.json({ ok: true });
 }

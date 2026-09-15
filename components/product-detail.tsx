@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { ShieldCheck, ShoppingBag, CheckCircle2 } from "lucide-react";
 import { formatIDR, conditionLabel } from "@/lib/utils";
 import { Modal } from "@/components/ui/modal";
+import { WishlistButton, ChatButton, FollowButton } from "@/components/extras";
 
 export default function ProductDetail({ product }: { product: any }) {
   const [active, setActive] = useState(0);
@@ -56,7 +57,25 @@ export default function ProductDetail({ product }: { product: any }) {
         <div className="flex gap-2">
           <button disabled={sold} onClick={() => router.push(`/checkout?ids=${product.id}`)} className="flex-1 rounded-xl bg-forest py-3 font-semibold text-sand disabled:opacity-40 dark:bg-emerald-600 dark:text-white">{sold ? product.status : "Beli Sekarang"}</button>
           <button disabled={sold} onClick={addToCart} className="flex-1 rounded-xl border border-forest py-3 font-semibold disabled:opacity-40 dark:border-emerald-500 dark:text-emerald-300">+ Keranjang</button>
+          <WishlistButton productId={product.id} />
         </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <ChatButton storeId={product.store.id} storeName={product.store.storeName} />
+          <FollowButton storeId={product.store.id} />
+          <span className="text-xs text-slate-400">Rating toko {Number(product.store.rating ?? 0).toFixed(1)}★</span>
+        </div>
+        {Array.isArray(product.related) && product.related.length > 0 && (
+          <div className="pt-4">
+            <p className="mb-2 text-sm font-bold dark:text-white">Produk serupa / dari toko ini</p>
+            <div className="grid grid-cols-2 gap-2">
+              {product.related.slice(0, 4).map((r: any) => (
+                <Link key={r.id} href={`/products/${r.id}`} className="rounded-xl border border-sand-line p-2 text-xs dark:border-slate-700 dark:text-white">
+                  {r.title}<br /><b>{formatIDR(r.price)}</b>
+                </Link>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
       <Modal open={cartOpen} onClose={() => setCartOpen(false)} title={cartMsg ? "Gagal" : "Ditambahkan ke Keranjang"}>
         {cartMsg ? (

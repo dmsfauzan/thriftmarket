@@ -1,10 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
+import { z } from "zod";
 import { prisma } from "@/lib/prisma";
+import { rateLimit } from "@/lib/rate-limit";
 import { registerSchema } from "@/lib/validators";
 import { logActivity } from "@/lib/activity";
 
 export async function POST(req: NextRequest) {
+  const rl = rateLimit(`register:${req.headers.get("x-forwarded-for") ?? "anon"}`, 5);
+  if (!rl.ok) return NextResponse.json({ error: "Terlalu banyak percobaan daftar — coba lagi nanti" }, { status: 429 });
   const body = await req.json();
   const parsed = registerSchema.safeParse(body);
   if (!parsed.success) return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
